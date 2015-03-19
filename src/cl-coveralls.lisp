@@ -65,6 +65,7 @@
             (loop for ,report-file in (finalize-coverage)
                   for ,source-path = (source-path-of-report-file ,report-file)
                   for ,normalized-source-path = (cond
+                                                  ((null ,source-path))
                                                   ((null ,root-dir)
                                                    ,source-path)
                                                   ((string= ,root-dir
