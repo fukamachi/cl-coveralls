@@ -55,30 +55,31 @@
         (source-path (gensym "SOURCE-PATH"))
         (normalized-source-path (gensym "NORMALIZED-SOURCE-PATH"))
         (root-dir (gensym "ROOT-DIR")))
-    `(when (asdf::getenv "COVERALLS")
-       (let ((,root-dir (and ,project-dir
-                             (namestring (probe-file ,project-dir)))))
-         (initialize-coverage)
-         (prog1 (unwind-protect (progn ,@body)
-                  (disable-coverage))
-           (report-to-coveralls
-            (loop for ,report-file in (finalize-coverage)
-                  for ,source-path = (source-path-of-report-file ,report-file)
-                  for ,normalized-source-path = (cond
-                                                  ((null ,source-path))
-                                                  ((null ,root-dir)
-                                                   ,source-path)
-                                                  ((string= ,root-dir
-                                                            ,source-path
-                                                            :end2 (length ,root-dir))
-                                                   (subseq ,source-path (length ,root-dir)))
-                                                  (t nil))
-                  when ,normalized-source-path collect
-                    `(("name" . ,,normalized-source-path)
-                      ("source_digest" . ,(ironclad:byte-array-to-hex-string
-                                           (ironclad:digest-file :md5 ,source-path)))
-                      ("coverage" . ,(get-coverage-from-report-file ,report-file))))
-            :dry-run ,dry-run))))))
+    `(if (asdf::getenv "COVERALLS")
+         (let ((,root-dir (and ,project-dir
+                               (namestring (probe-file ,project-dir)))))
+           (initialize-coverage)
+           (prog1 (unwind-protect (progn ,@body)
+                    (disable-coverage))
+             (report-to-coveralls
+              (loop for ,report-file in (finalize-coverage)
+                    for ,source-path = (source-path-of-report-file ,report-file)
+                    for ,normalized-source-path = (cond
+                                                    ((null ,source-path))
+                                                    ((null ,root-dir)
+                                                     ,source-path)
+                                                    ((string= ,root-dir
+                                                              ,source-path
+                                                              :end2 (length ,root-dir))
+                                                     (subseq ,source-path (length ,root-dir)))
+                                                    (t nil))
+                    when ,normalized-source-path collect
+                      `(("name" . ,,normalized-source-path)
+                        ("source_digest" . ,(ironclad:byte-array-to-hex-string
+                                             (ironclad:digest-file :md5 ,source-path)))
+                        ("coverage" . ,(get-coverage-from-report-file ,report-file))))
+              :dry-run ,dry-run)))
+         (progn ,@body))))
 
 (defun service-name ()
   (cond
