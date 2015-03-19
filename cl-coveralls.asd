@@ -29,7 +29,8 @@
                  (:module "impls"
                   :depends-on ("util")
                   :components
-                  (#+sbcl (:file "sbcl")))
+                  (#+sbcl (:file "sbcl")
+                   #-sbcl (:file "other")))
                  (:file "util"))))
   :description "Coverage tracker for Coveralls"
   :long-description
