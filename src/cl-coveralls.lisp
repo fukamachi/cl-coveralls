@@ -31,7 +31,7 @@
   (let ((json
           (jsown:to-json
            `(:obj
-             ("service_job_id" . ,(service-job-id (service-name)))
+             ("service_job_id" . ,(service-job-id))
              ("service_name" . ,(string-downcase (service-name)))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
@@ -48,7 +48,7 @@
             (unless (= status 200)
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
-(defmacro with-coveralls ((&key project-dir dry-run) &body body)
+(defmacro with-coveralls ((&key (project-dir (project-dir)) dry-run) &body body)
   (let ((report-file (gensym "REPORT-FILE"))
         (source-path (gensym "SOURCE-PATH"))
         (normalized-source-path (gensym "NORMALIZED-SOURCE-PATH"))
@@ -80,6 +80,10 @@
     ((asdf::getenv "TRAVIS_JOB_ID") :travis-ci)
     (t :travis-ci)))
 
-(defun service-job-id (service-name)
+(defun service-job-id (&optional (service-name (service-name)))
   (ecase service-name
     (:travis-ci (asdf::getenv "TRAVIS_JOB_ID"))))
+
+(defun project-dir (&optional (service-name (service-name)))
+  (ecase service-name
+    (:travis-ci (asdf::getenv "TRAVIS_BUILD_DIR"))))
