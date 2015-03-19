@@ -20,12 +20,7 @@
                 :to-json)
   (:import-from :flexi-streams
                 :octets-to-string)
-  (:export :enable-coverage
-           :disable-coverage
-           :initialize-coverage
-           :finalize-coverage
-           :report-to-coveralls
-           :with-coveralls))
+  (:export :with-coveralls))
 (in-package :cl-coveralls)
 
 (defun report-to-coveralls (reports &key dry-run)
@@ -60,28 +55,29 @@
         (source-path (gensym "SOURCE-PATH"))
         (normalized-source-path (gensym "NORMALIZED-SOURCE-PATH"))
         (root-dir (gensym "ROOT-DIR")))
-    `(let ((,root-dir (and ,project-dir
-                           (namestring (probe-file ,project-dir)))))
-       (initialize-coverage)
-       (prog1 (unwind-protect (progn ,@body)
-                (disable-coverage))
-         (report-to-coveralls
-          (loop for ,report-file in (finalize-coverage)
-                for ,source-path = (source-path-of-report-file ,report-file)
-                for ,normalized-source-path = (cond
-                                                ((null ,root-dir)
-                                                 ,source-path)
-                                                ((string= ,root-dir
-                                                          ,source-path
-                                                          :end2 (length ,root-dir))
-                                                 (subseq ,source-path (length ,root-dir)))
-                                                (t nil))
-                when ,normalized-source-path collect
-                  `(("name" . ,,normalized-source-path)
-                    ("source_digest" . ,(ironclad:byte-array-to-hex-string
-                                         (ironclad:digest-file :md5 ,source-path)))
-                    ("coverage" . ,(get-coverage-from-report-file ,report-file))))
-          :dry-run ,dry-run)))))
+    `(when (asdf::getenv "COVERALLS")
+       (let ((,root-dir (and ,project-dir
+                             (namestring (probe-file ,project-dir)))))
+         (initialize-coverage)
+         (prog1 (unwind-protect (progn ,@body)
+                  (disable-coverage))
+           (report-to-coveralls
+            (loop for ,report-file in (finalize-coverage)
+                  for ,source-path = (source-path-of-report-file ,report-file)
+                  for ,normalized-source-path = (cond
+                                                  ((null ,root-dir)
+                                                   ,source-path)
+                                                  ((string= ,root-dir
+                                                            ,source-path
+                                                            :end2 (length ,root-dir))
+                                                   (subseq ,source-path (length ,root-dir)))
+                                                  (t nil))
+                  when ,normalized-source-path collect
+                    `(("name" . ,,normalized-source-path)
+                      ("source_digest" . ,(ironclad:byte-array-to-hex-string
+                                           (ironclad:digest-file :md5 ,source-path)))
+                      ("coverage" . ,(get-coverage-from-report-file ,report-file))))
+            :dry-run ,dry-run))))))
 
 (defun service-name ()
   (cond
