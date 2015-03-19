@@ -42,7 +42,7 @@
                                         reports))))))
     (if dry-run
         (prin1 json)
-        (let ((json-file (fad:with-open-temporary-file (out :direction :output)
+        (let ((json-file (fad:with-open-temporary-file (out :direction :output :keep t)
                            (write-string json out)
                            (pathname out))))
           (multiple-value-bind (body status)
