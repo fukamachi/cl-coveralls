@@ -82,7 +82,7 @@
 
 (defun service-name ()
   (cond
-    ((asdf::getenv "TRAVIS_JOB_ID") :travis-ci)
+    ((asdf::getenv "TRAVIS") :travis-ci)
     (t :travis-ci)))
 
 (defun service-job-id (&optional (service-name (service-name)))
