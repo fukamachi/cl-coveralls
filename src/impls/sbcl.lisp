@@ -10,21 +10,29 @@
   (:import-from :cl-fad
                 :list-directory
                 :delete-directory-and-files)
-  (:export :initialize-coverage
+  (:export :enable-coverage
+           :disable-coverage
+           :initialize-coverage
            :finalize-coverage
            :source-path-of-report-file
            :get-coverage-from-report-file))
 (in-package :cl-coveralls.impls.sbcl)
 
-(defun initialize-coverage ()
+(defun enable-coverage ()
   (declaim (optimize sb-cover:store-coverage-data)))
+
+(defun disable-coverage ()
+  (declaim (optimize (sb-cover:store-coverage-data 0))))
+
+(defun initialize-coverage ()
+  (enable-coverage))
 
 ;; returns report files
 (defun finalize-coverage ()
+  (disable-coverage)
   (let ((report-dir (get-report-directory)))
     (ensure-directories-exist report-dir)
     (sb-cover:report report-dir)
-    (declaim (optimize (sb-cover:store-coverage-data 0)))
     (remove "cover-index.html"
             (fad:list-directory report-dir)
             :key #'file-namestring

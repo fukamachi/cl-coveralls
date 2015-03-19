@@ -3,6 +3,8 @@
   (:nicknames :coveralls)
   (:use :cl)
   (:import-from :cl-coveralls.impls
+                :enable-coverage
+                :disable-coverage
                 :initialize-coverage
                 :finalize-coverage
                 :source-path-of-report-file
@@ -18,7 +20,9 @@
                 :to-json)
   (:import-from :flexi-streams
                 :octets-to-string)
-  (:export :initialize-coverage
+  (:export :enable-coverage
+           :disable-coverage
+           :initialize-coverage
            :finalize-coverage
            :report-to-coveralls
            :with-coveralls))
@@ -56,7 +60,8 @@
     `(let ((,root-dir (and ,project-dir
                            (namestring (probe-file ,project-dir)))))
        (initialize-coverage)
-       (prog1 (progn ,@body)
+       (prog1 (unwind-protect (progn ,@body)
+                (disable-coverage))
          (report-to-coveralls
           (loop for ,report-file in (finalize-coverage)
                 for ,source-path = (source-path-of-report-file ,report-file)
