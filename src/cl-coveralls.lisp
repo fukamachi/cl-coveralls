@@ -43,11 +43,14 @@
     (if dry-run
         (prin1 json)
         (let ((json-file (fad:with-open-temporary-file (out :direction :output)
-                           (write-string json out))))
+                           (write-string json out)
+                           (pathname out))))
           (multiple-value-bind (body status)
               (drakma:http-request "https://coveralls.io/api/v1/jobs"
                                    :method :post
-                                   :parameters `(("json_file" . ,json-file))
+                                   :parameters `(("json_file" ,json-file
+                                                              :content-type "application/json"
+                                                              :filename ,(file-namestring json-file)))
                                    :force-binary t)
             (unless (= status 200)
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
