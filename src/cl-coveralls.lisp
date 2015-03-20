@@ -50,14 +50,16 @@
             (unless (= status 200)
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
-(defmacro with-coveralls ((&key (project-dir (project-dir)) dry-run) &body body)
+(defmacro with-coveralls (&body body)
   (let ((report-file (gensym "REPORT-FILE"))
         (source-path (gensym "SOURCE-PATH"))
         (normalized-source-path (gensym "NORMALIZED-SOURCE-PATH"))
+        (project-dir (gensym "PROJECT-DIR"))
         (root-dir (gensym "ROOT-DIR")))
     `(if (asdf::getenv "COVERALLS")
-         (let ((,root-dir (and ,project-dir
-                               (namestring (probe-file ,project-dir)))))
+         (let* ((,project-dir (project-dir))
+                (,root-dir (and ,project-dir
+                                (namestring (probe-file ,project-dir)))))
            (initialize-coverage)
            (prog1 (unwind-protect (progn ,@body)
                     (disable-coverage))
@@ -77,8 +79,7 @@
                       `(("name" . ,,normalized-source-path)
                         ("source_digest" . ,(ironclad:byte-array-to-hex-string
                                              (ironclad:digest-file :md5 ,source-path)))
-                        ("coverage" . ,(get-coverage-from-report-file ,report-file))))
-              :dry-run ,dry-run)))
+                        ("coverage" . ,(get-coverage-from-report-file ,report-file)))))))
          (progn ,@body))))
 
 (defun service-name ()

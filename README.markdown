@@ -32,7 +32,7 @@ $ COVERALLS=true sbcl --load test-script.lisp --eval '(sb-ext:exit)'
 In your test script, wrap your test code with `coveralls:with-coveralls`.
 
 ```common-lisp
-(coveralls:with-coveralls ()
+(coveralls:with-coveralls
   ;; Run tests
   (prove:run :your-app))
 ```
