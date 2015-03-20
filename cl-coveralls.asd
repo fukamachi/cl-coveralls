@@ -33,8 +33,11 @@
                   :depends-on ("util")
                   :components
                   (#+sbcl (:file "sbcl")
-                   #+ccl (:file "ccl")
-                   #-(or sbcl ccl) (:file "other")))
+                   #+(and ccl-1.4
+                          (not :ccl-1.10)) (:file "ccl")
+                   #-(or sbcl
+                         (and ccl-1.4
+                              (not :ccl-1.10))) (:file "other")))
                  (:file "util"))))
   :description "Coverage tracker for Coveralls"
   :long-description

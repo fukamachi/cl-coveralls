@@ -10,14 +10,15 @@
            :get-coverage-from-report-file))
 (in-package :cl-coveralls.impls.other)
 
-(defun enable-coverage ()
-  (error "Not supported implementation: ~A" (lisp-implementation-type)))
-(defun disable-coverage ()
-  (error "Not supported implementation: ~A" (lisp-implementation-type)))
-(defun initialize-coverage ()
-  (error "Not supported implementation: ~A" (lisp-implementation-type)))
-(defun finalize-coverage ()
-  (error "Not supported implementation: ~A" (lisp-implementation-type)))
+(defun not-supported ()
+  (error "Not supported implementation: ~A ~A"
+         (lisp-implementation-type)
+         (lisp-implementation-version)))
+
+(defun enable-coverage () (not-supported))
+(defun disable-coverage () (not-supported))
+(defun initialize-coverage () (not-supported))
+(defun finalize-coverage () (not-supported))
 (defun source-path-of-report-file (html)
   (declare (ignore html)))
 (defun get-coverage-from-report-file (html)
