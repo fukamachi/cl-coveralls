@@ -20,6 +20,8 @@
                 :to-json)
   (:import-from :flexi-streams
                 :octets-to-string)
+  (:import-from :alexandria
+                :with-gensyms)
   (:export :with-coveralls))
 (in-package :cl-coveralls)
 
@@ -51,11 +53,7 @@
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
 (defmacro with-coveralls (&body body)
-  (let ((report-file (gensym "REPORT-FILE"))
-        (source-path (gensym "SOURCE-PATH"))
-        (normalized-source-path (gensym "NORMALIZED-SOURCE-PATH"))
-        (project-dir (gensym "PROJECT-DIR"))
-        (root-dir (gensym "ROOT-DIR")))
+  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir)
     `(if (asdf::getenv "COVERALLS")
          (let* ((,project-dir (project-dir))
                 (,root-dir (and ,project-dir
