@@ -22,7 +22,10 @@
                :jsown
                :drakma
                :cl-fad
-               :flexi-streams)
+               :cl-ppcre
+               :flexi-streams
+               :alexandria
+               :split-sequence)
   :components ((:module "src"
                 :components
                 ((:file "cl-coveralls" :depends-on ("impls"))
@@ -30,7 +33,8 @@
                   :depends-on ("util")
                   :components
                   (#+sbcl (:file "sbcl")
-                   #-sbcl (:file "other")))
+                   #+ccl (:file "ccl")
+                   #-(or sbcl ccl) (:file "other")))
                  (:file "util"))))
   :description "Coverage tracker for Coveralls"
   :long-description
