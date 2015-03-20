@@ -11,7 +11,7 @@ This software is still ALPHA quality. The APIs will be likely to change.
 ### Supported implementations
 
 * SBCL
-* Clozure CL 1.4-1.9 (Not support 1.10 because its broken)
+* Clozure CL 1.4-1.9 (Not support 1.10 because it's broken)
 
 ### Supported CI services
 
