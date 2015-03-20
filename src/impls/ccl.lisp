@@ -2,6 +2,8 @@
 (defpackage cl-coveralls.impls.ccl
   (:nicknames :cl-coveralls.impls)
   (:use :cl)
+  (:import-from :cl-coveralls.util
+                :get-report-directory)
   (:import-from :cl-fad
                 :list-directory)
   (:import-from :alexandria
@@ -59,8 +61,7 @@
                 (split-sequence #\; path)))
           (make-pathname
            :name (last path-components)
-           :directory (cons :absolute (butlast path-components))))
-        (split-sequence #\; path))))
+           :directory (cons :absolute (butlast path-components)))))))
 
 (defun get-coverage-from-report-file (html)
   (labels ((get-lines (html)
