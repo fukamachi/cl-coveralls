@@ -53,12 +53,19 @@
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
 (defmacro with-coveralls (&body body)
-  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir)
+  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name)
     `(if (asdf::getenv "COVERALLS")
          (let* ((,project-dir (project-dir))
                 (,root-dir (and ,project-dir
                                 (namestring (probe-file ,project-dir)))))
            (initialize-coverage)
+           (loop for ,file in (uiop:directory-files ,project-dir)
+                 when (string= (pathname-type ,file) "asd")
+                   do (let ((,system-name (pathname-name ,file)))
+                        (if (asdf:component-loaded-p ,system-name)
+                            (asdf:load-system ,system-name :force t)
+                            #+quicklisp (ql:quickload ,system-name)
+                            #-quicklisp (asdf:load-system ,system-name))))
            (prog1 (unwind-protect (progn ,@body)
                     (disable-coverage))
              (report-to-coveralls
@@ -91,4 +98,4 @@
 
 (defun project-dir (&optional (service-name (service-name)))
   (ecase service-name
-    (:travis-ci (asdf::getenv "TRAVIS_BUILD_DIR"))))
+    (:travis-ci (uiop:ensure-directory-pathname (asdf::getenv "TRAVIS_BUILD_DIR")))))
