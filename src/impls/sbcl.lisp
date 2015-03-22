@@ -32,7 +32,8 @@
   (disable-coverage)
   (let ((report-dir (get-report-directory)))
     (ensure-directories-exist report-dir)
-    (sb-cover:report report-dir)
+    (let ((*error-output* (make-broadcast-stream)))
+      (sb-cover:report report-dir))
     (remove "cover-index.html"
             (fad:list-directory report-dir)
             :key #'file-namestring
