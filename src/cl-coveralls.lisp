@@ -68,18 +68,10 @@
              (return t))))
 
 (defun normalize-exclude-path (root-dir path)
-  (let ((path
-          (etypecase path
-            (string (merge-pathnames (pathname path) root-dir))
-            (pathname path))))
-    (cond
-      ((probe-file path) path)
-      ((uiop:file-pathname-p path)
-       (setf path (uiop:ensure-directory-pathname path))
-       (if (probe-file path)
-           path
-           nil))
-      (t nil))))
+  (probe-file
+   (etypecase path
+     (string (merge-pathnames (pathname path) root-dir))
+     (pathname path))))
 
 (defmacro with-coveralls ((&key exclude) &body body)
   (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name g-exclude)
@@ -109,9 +101,10 @@
                                                           (not (find ,source-path
                                                                      ,g-exclude
                                                                      :key (lambda (path)
-                                                                            (normalize-exclude-path path ,root-dir))
+                                                                            (normalize-exclude-path ,root-dir path))
                                                                      :test (lambda (path1 path2)
                                                                              (when path2
+                                                                               (setf path1 (merge-pathnames path1 ,root-dir))
                                                                                (if (uiop:directory-pathname-p path2)
                                                                                    (pathname-in-directory-p path1 path2)
                                                                                    (equal path1 path2)))))))
