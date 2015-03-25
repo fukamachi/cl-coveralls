@@ -21,7 +21,8 @@
   (:import-from :flexi-streams
                 :octets-to-string)
   (:import-from :alexandria
-                :with-gensyms)
+                :with-gensyms
+                :ensure-list)
   (:export :with-coveralls))
 (in-package :cl-coveralls)
 
@@ -52,10 +53,39 @@
             (unless (= status 200)
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
-(defmacro with-coveralls (&body body)
-  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name)
+(defun normalize-exclude-path (root-dir path)
+  (let ((path
+          (etypecase path
+            (string (merge-pathnames (pathname path) root-dir))
+            (pathname path))))
+    (cond
+      ((probe-file path) path)
+      ((uiop:file-pathname-p path)
+       (setf path (uiop:ensure-directory-pathname path))
+       (if (probe-file path)
+           path
+           nil))
+      (t nil))))
+
+(defun pathname-in-directory-p (path directory)
+  (let ((directory (pathname-directory directory))
+        (path (pathname-directory path)))
+    (loop for dir1 = (pop directory)
+          for dir2 = (pop path)
+          if (null dir1)
+            do (return t)
+          else if (null dir2)
+            do (return nil)
+          else if (string/= dir1 dir2)
+            do (return nil)
+          finally
+             (return t))))
+
+(defmacro with-coveralls ((&key exclude) &body body)
+  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name g-exclude)
     `(if (asdf::getenv "COVERALLS")
          (let* ((,project-dir (project-dir))
+                (,g-exclude (ensure-list ,exclude))
                 (,root-dir (and ,project-dir
                                 (namestring (probe-file ,project-dir)))))
            (initialize-coverage)
@@ -75,9 +105,11 @@
                                                     ((null ,source-path))
                                                     ((null ,root-dir)
                                                      ,source-path)
-                                                    ((string= ,root-dir
-                                                              ,source-path
-                                                              :end2 (length ,root-dir))
+                                                    ((and (pathname-in-directory-p ,source-path ,root-dir)
+                                                          (not (find ,source-path
+                                                                     ,g-exclude
+                                                                     :key #'normalize-exclude-path
+                                                                     :test #'pathname-in-directory-p)))
                                                      (subseq ,source-path (length ,root-dir)))
                                                     (t nil))
                     when ,normalized-source-path collect
