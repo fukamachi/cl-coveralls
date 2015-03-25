@@ -53,20 +53,6 @@
             (unless (= status 200)
               (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
 
-(defun normalize-exclude-path (root-dir path)
-  (let ((path
-          (etypecase path
-            (string (merge-pathnames (pathname path) root-dir))
-            (pathname path))))
-    (cond
-      ((probe-file path) path)
-      ((uiop:file-pathname-p path)
-       (setf path (uiop:ensure-directory-pathname path))
-       (if (probe-file path)
-           path
-           nil))
-      (t nil))))
-
 (defun pathname-in-directory-p (path directory)
   (let ((directory (pathname-directory directory))
         (path (pathname-directory path)))
@@ -80,6 +66,20 @@
             do (return nil)
           finally
              (return t))))
+
+(defun normalize-exclude-path (root-dir path)
+  (let ((path
+          (etypecase path
+            (string (merge-pathnames (pathname path) root-dir))
+            (pathname path))))
+    (cond
+      ((probe-file path) path)
+      ((uiop:file-pathname-p path)
+       (setf path (uiop:ensure-directory-pathname path))
+       (if (probe-file path)
+           path
+           nil))
+      (t nil))))
 
 (defmacro with-coveralls ((&key exclude) &body body)
   (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name g-exclude)
@@ -109,7 +109,10 @@
                                                           (not (find ,source-path
                                                                      ,g-exclude
                                                                      :key #'normalize-exclude-path
-                                                                     :test #'pathname-in-directory-p)))
+                                                                     :test (lambda (path1 path2)
+                                                                             (if (uiop:directory-pathname-p path2)
+                                                                                 (pathname-in-directory-p path1 path2)
+                                                                                 (equal path1 path2))))))
                                                      (subseq ,source-path (length ,root-dir)))
                                                     (t nil))
                     when ,normalized-source-path collect
