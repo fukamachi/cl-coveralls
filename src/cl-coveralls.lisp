@@ -108,11 +108,13 @@
                                                     ((and (pathname-in-directory-p ,source-path ,root-dir)
                                                           (not (find ,source-path
                                                                      ,g-exclude
-                                                                     :key #'normalize-exclude-path
+                                                                     :key (lambda (path)
+                                                                            (normalize-exclude-path path ,root-dir))
                                                                      :test (lambda (path1 path2)
-                                                                             (if (uiop:directory-pathname-p path2)
-                                                                                 (pathname-in-directory-p path1 path2)
-                                                                                 (equal path1 path2))))))
+                                                                             (when path2
+                                                                               (if (uiop:directory-pathname-p path2)
+                                                                                   (pathname-in-directory-p path1 path2)
+                                                                                   (equal path1 path2)))))))
                                                      (subseq ,source-path (length ,root-dir)))
                                                     (t nil))
                     when ,normalized-source-path collect
