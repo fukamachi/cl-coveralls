@@ -115,7 +115,7 @@
                         ("source_digest" . ,(ironclad:byte-array-to-hex-string
                                              (ironclad:digest-file :md5 ,source-path)))
                         ("coverage" . ,(get-coverage-from-report-file ,report-file))))
-              :dry-run dry-run)))
+              :dry-run ,dry-run)))
          (progn ,@body))))
 
 (defun service-name ()
