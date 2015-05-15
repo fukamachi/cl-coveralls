@@ -73,7 +73,7 @@
      (string (merge-pathnames (pathname path) root-dir))
      (pathname path))))
 
-(defmacro with-coveralls ((&key exclude) &body body)
+(defmacro with-coveralls ((&key exclude dry-run) &body body)
   (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name g-exclude)
     `(if (asdf::getenv "COVERALLS")
          (let* ((,project-dir (project-dir))
@@ -114,7 +114,8 @@
                       `(("name" . ,,normalized-source-path)
                         ("source_digest" . ,(ironclad:byte-array-to-hex-string
                                              (ironclad:digest-file :md5 ,source-path)))
-                        ("coverage" . ,(get-coverage-from-report-file ,report-file)))))))
+                        ("coverage" . ,(get-coverage-from-report-file ,report-file))))
+              :dry-run dry-run)))
          (progn ,@body))))
 
 (defun service-name ()
