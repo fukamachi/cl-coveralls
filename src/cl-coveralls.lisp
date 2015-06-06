@@ -24,7 +24,8 @@
                 :when-let
                 :with-gensyms
                 :ensure-list)
-  (:export :with-coveralls))
+  (:export :with-coveralls
+           :calc-coverage))
 (in-package :cl-coveralls)
 
 (defun report-to-coveralls (reports &key dry-run)
@@ -111,6 +112,15 @@
               ("source-digest" . ,(ironclad:byte-array-to-hex-string
                                    (ironclad:digest-file :md5 source-path)))
               ("coverage" . ,(get-coverage-from-report-file report-file))))))
+
+(defun calc-coverage (fn &key project-dir exclude)
+  (unless project-dir
+    (error ":project-dir is required"))
+  (loop for report in (get-coverage fn :exclude exclude :project-dir project-dir)
+        for coverage = (cdr (assoc "coverage" report :test #'string=))
+        sum (count :null coverage :test-not #'eql) into all
+        sum (count 1 coverage) into pass
+        finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir (project-dir))) &body body)
   `(if (or ,dry-run (asdf::getenv "COVERALLS"))
