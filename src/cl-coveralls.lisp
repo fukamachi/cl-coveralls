@@ -21,6 +21,7 @@
   (:import-from :flexi-streams
                 :octets-to-string)
   (:import-from :alexandria
+                :when-let
                 :with-gensyms
                 :ensure-list)
   (:export :with-coveralls))
@@ -73,50 +74,51 @@
      (string (merge-pathnames (pathname path) root-dir))
      (pathname path))))
 
-(defmacro with-coveralls ((&key exclude dry-run) &body body)
-  (with-gensyms (report-file source-path normalized-source-path project-dir root-dir file system-name g-exclude)
-    `(if (asdf::getenv "COVERALLS")
-         (let* ((,project-dir (project-dir))
-                (,g-exclude (ensure-list ,exclude))
-                (,root-dir (and ,project-dir
-                                (namestring (probe-file ,project-dir)))))
-           (initialize-coverage)
-           (loop for ,file in (uiop:directory-files ,project-dir)
-                 when (string= (pathname-type ,file) "asd")
-                   do (let ((,system-name (pathname-name ,file)))
-                        (if (asdf:component-loaded-p ,system-name)
-                            (asdf:load-system ,system-name :force t)
-                            #+quicklisp (ql:quickload ,system-name)
-                            #-quicklisp (asdf:load-system ,system-name))))
-           (prog1 (unwind-protect (progn ,@body)
-                    (disable-coverage))
-             (report-to-coveralls
-              (loop for ,report-file in (finalize-coverage)
-                    for ,source-path = (source-path-of-report-file ,report-file)
-                    for ,normalized-source-path = (cond
-                                                    ((null ,source-path))
-                                                    ((null ,root-dir)
-                                                     ,source-path)
-                                                    ((and (pathname-in-directory-p ,source-path ,root-dir)
-                                                          (not (find ,source-path
-                                                                     ,g-exclude
-                                                                     :key (lambda (path)
-                                                                            (normalize-exclude-path ,root-dir path))
-                                                                     :test (lambda (path1 path2)
-                                                                             (when path2
-                                                                               (setf path1 (merge-pathnames path1 ,root-dir))
-                                                                               (if (uiop:directory-pathname-p path2)
-                                                                                   (pathname-in-directory-p path1 path2)
-                                                                                   (equal path1 path2)))))))
-                                                     (subseq ,source-path (length ,root-dir)))
-                                                    (t nil))
-                    when ,normalized-source-path collect
-                      `(("name" . ,,normalized-source-path)
-                        ("source_digest" . ,(ironclad:byte-array-to-hex-string
-                                             (ironclad:digest-file :md5 ,source-path)))
-                        ("coverage" . ,(get-coverage-from-report-file ,report-file))))
-              :dry-run ,dry-run)))
-         (progn ,@body))))
+(defun get-coverage (fn &key exclude project-dir)
+  (unless project-dir
+    (error "Project directory is undefined"))
+  (let ((root-dir (namestring (probe-file project-dir))))
+    (initialize-coverage)
+    (loop for file in (uiop:directory-files project-dir)
+          when (string= (pathname-type file) "asd")
+            do (let ((system-name (pathname-name file)))
+                 (if (asdf:component-loaded-p system-name)
+                     (asdf:load-system system-name :force t)
+                     #+quicklisp (ql:quickload system-name)
+                     #-quicklisp (asdf:load-system system-name))))
+    (unwind-protect (funcall fn)
+      (disable-coverage))
+    (loop for report-file in (finalize-coverage)
+          for source-path = (source-path-of-report-file report-file)
+          for normalized-source-path = (cond
+                                         ((null source-path))
+                                         ((null root-dir) source-path)
+                                         ((and (pathname-in-directory-p source-path root-dir)
+                                               (not (find source-path
+                                                          exclude
+                                                          :key (lambda (path)
+                                                                 (normalize-exclude-path root-dir path))
+                                                          :test (lambda (path1 path2)
+                                                                  (when path2
+                                                                    (setf path1 (merge-pathnames path1 root-dir))
+                                                                    (if (uiop:directory-pathname-p path2)
+                                                                        (pathname-in-directory-p path1 path2)
+                                                                        (equal path1 path2)))))))
+                                          (subseq source-path (length root-dir)))
+                                         (t nil))
+          when normalized-source-path collect
+            `(("name" . ,normalized-source-path)
+              ("source-digest" . ,(ironclad:byte-array-to-hex-string
+                                   (ironclad:digest-file :md5 source-path)))
+              ("coverage" . ,(get-coverage-from-report-file report-file))))))
+
+(defmacro with-coveralls ((&key exclude dry-run (project-dir (project-dir))) &body body)
+  `(if (or ,dry-run (asdf::getenv "COVERALLS"))
+       (report-to-coveralls
+        (get-coverage (lambda () ,@body)
+                      :exclude ,exclude :project-dir ,project-dir)
+        :dry-run ,dry-run)
+       (progn ,@body)))
 
 (defun service-name ()
   (cond
@@ -129,4 +131,6 @@
 
 (defun project-dir (&optional (service-name (service-name)))
   (ecase service-name
-    (:travis-ci (uiop:ensure-directory-pathname (asdf::getenv "TRAVIS_BUILD_DIR")))))
+    (:travis-ci
+     (when-let (travis-build-dir (asdf::getenv "TRAVIS_BUILD_DIR"))
+       (uiop:ensure-directory-pathname travis-build-dir)))))
