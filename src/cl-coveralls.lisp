@@ -87,31 +87,33 @@
                      (asdf:load-system system-name :force t)
                      #+quicklisp (ql:quickload system-name)
                      #-quicklisp (asdf:load-system system-name))))
-    (unwind-protect (funcall fn)
-      (disable-coverage))
-    (loop for report-file in (finalize-coverage)
-          for source-path = (source-path-of-report-file report-file)
-          for normalized-source-path = (cond
-                                         ((null source-path))
-                                         ((null root-dir) source-path)
-                                         ((and (pathname-in-directory-p source-path root-dir)
-                                               (not (find source-path
-                                                          exclude
-                                                          :key (lambda (path)
-                                                                 (normalize-exclude-path root-dir path))
-                                                          :test (lambda (path1 path2)
-                                                                  (when path2
-                                                                    (setf path1 (merge-pathnames path1 root-dir))
-                                                                    (if (uiop:directory-pathname-p path2)
-                                                                        (pathname-in-directory-p path1 path2)
-                                                                        (equal path1 path2)))))))
-                                          (subseq source-path (length root-dir)))
-                                         (t nil))
-          when normalized-source-path collect
-            `(("name" . ,normalized-source-path)
-              ("source-digest" . ,(ironclad:byte-array-to-hex-string
-                                   (ironclad:digest-file :md5 source-path)))
-              ("coverage" . ,(get-coverage-from-report-file report-file))))))
+    (let ((result (unwind-protect (funcall fn)
+                    (disable-coverage))))
+      (values
+       (loop for report-file in (finalize-coverage)
+             for source-path = (source-path-of-report-file report-file)
+             for normalized-source-path = (cond
+                                            ((null source-path))
+                                            ((null root-dir) source-path)
+                                            ((and (pathname-in-directory-p source-path root-dir)
+                                                  (not (find source-path
+                                                             exclude
+                                                             :key (lambda (path)
+                                                                    (normalize-exclude-path root-dir path))
+                                                             :test (lambda (path1 path2)
+                                                                     (when path2
+                                                                       (setf path1 (merge-pathnames path1 root-dir))
+                                                                       (if (uiop:directory-pathname-p path2)
+                                                                           (pathname-in-directory-p path1 path2)
+                                                                           (equal path1 path2)))))))
+                                             (subseq source-path (length root-dir)))
+                                            (t nil))
+             when normalized-source-path collect
+               `(("name" . ,normalized-source-path)
+                 ("source-digest" . ,(ironclad:byte-array-to-hex-string
+                                      (ironclad:digest-file :md5 source-path)))
+                 ("coverage" . ,(get-coverage-from-report-file report-file))))
+       result))))
 
 (defun calc-coverage (fn &key project-dir exclude)
   (unless project-dir
@@ -123,12 +125,14 @@
         finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir (project-dir))) &body body)
-  `(if (asdf::getenv "COVERALLS")
-       (report-to-coveralls
-        (get-coverage (lambda () ,@body)
-                      :exclude ,exclude :project-dir ,project-dir)
-        :dry-run ,dry-run)
-       (progn ,@body)))
+  (with-gensyms (reports result)
+    `(if (asdf::getenv "COVERALLS")
+         (multiple-value-bind (,reports ,result)
+             (get-coverage (lambda () ,@body)
+                           :exclude ,exclude :project-dir ,project-dir)
+           (report-to-coveralls ,reports :dry-run ,dry-run)
+           ,result)
+         (progn ,@body))))
 
 (defun service-name ()
   (cond
