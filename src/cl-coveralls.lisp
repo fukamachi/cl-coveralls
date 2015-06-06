@@ -123,7 +123,7 @@
         finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir (project-dir))) &body body)
-  `(if (or ,dry-run (asdf::getenv "COVERALLS"))
+  `(if (asdf::getenv "COVERALLS")
        (report-to-coveralls
         (get-coverage (lambda () ,@body)
                       :exclude ,exclude :project-dir ,project-dir)
