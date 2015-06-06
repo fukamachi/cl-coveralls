@@ -97,7 +97,7 @@
                                             ((null root-dir) source-path)
                                             ((and (pathname-in-directory-p source-path root-dir)
                                                   (not (find source-path
-                                                             exclude
+                                                             (ensure-list exclude)
                                                              :key (lambda (path)
                                                                     (normalize-exclude-path root-dir path))
                                                              :test (lambda (path1 path2)
