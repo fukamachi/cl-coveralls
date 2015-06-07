@@ -124,7 +124,7 @@
         sum (count 1 coverage) into pass
         finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
-(defmacro with-coveralls ((&key exclude dry-run (project-dir (project-dir))) &body body)
+(defmacro with-coveralls ((&key exclude dry-run (project-dir '(project-dir))) &body body)
   (with-gensyms (reports result)
     `(if (asdf::getenv "COVERALLS")
          (multiple-value-bind (,reports ,result)
