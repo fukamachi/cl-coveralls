@@ -8,8 +8,7 @@
                 :$
                 :initialize)
   (:import-from :cl-fad
-                :list-directory
-                :delete-directory-and-files)
+                :list-directory)
   (:export :enable-coverage
            :disable-coverage
            :initialize-coverage
