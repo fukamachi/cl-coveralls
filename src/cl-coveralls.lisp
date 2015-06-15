@@ -37,6 +37,9 @@
            `(:obj
              ("service_job_id" . ,(service-job-id))
              ("service_name" . ,(string-downcase (service-name)))
+             ,@(ecase (service-name)
+                 (:circleci `(("repo_token" . ,(asdf::getenv "COVERALLS_REPO_TOKEN"))))
+                 (:travis-ci '()))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
                                         reports))))))
@@ -137,14 +140,20 @@
 (defun service-name ()
   (cond
     ((asdf::getenv "TRAVIS") :travis-ci)
+    ((asdf::getenv "CIRCLECI") :circleci)
     (t :travis-ci)))
 
 (defun service-job-id (&optional (service-name (service-name)))
   (ecase service-name
-    (:travis-ci (asdf::getenv "TRAVIS_JOB_ID"))))
+    (:travis-ci (asdf::getenv "TRAVIS_JOB_ID"))
+    (:circleci (asdf::getenv "CIRCLE_BUILD_NUM"))))
 
 (defun project-dir (&optional (service-name (service-name)))
   (ecase service-name
     (:travis-ci
      (when-let (travis-build-dir (asdf::getenv "TRAVIS_BUILD_DIR"))
-       (uiop:ensure-directory-pathname travis-build-dir)))))
+       (uiop:ensure-directory-pathname travis-build-dir)))
+    (:circleci
+     (when-let (circleci-build-dir (asdf::getenv "CIRCLE_PROJECT_REPONAME"))
+       (uiop:ensure-directory-pathname
+        (merge-pathnames circleci-build-dir (user-homedir-pathname)))))))
