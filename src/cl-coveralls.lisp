@@ -22,6 +22,7 @@
                 :octets-to-string)
   (:import-from :alexandria
                 :when-let
+                :if-let
                 :with-gensyms
                 :ensure-list)
   (:export :with-coveralls
@@ -35,11 +36,12 @@
   (let ((json
           (jsown:to-json
            `(:obj
-             ("service_job_id" . ,(service-job-id))
              ("service_name" . ,(string-downcase (service-name)))
              ,@(ecase (service-name)
-                 (:circleci `(("repo_token" . ,(asdf::getenv "COVERALLS_REPO_TOKEN"))))
-                 (:travis-ci '()))
+                 (:circleci (if-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
+                              `(("repo_token" . ,repo-token))
+                              `(("service_job_id" . ,(service-job-id)))))
+                 (:travis-ci `(("service_job_id" . ,(service-job-id)))))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
                                         reports))))))
