@@ -132,7 +132,8 @@
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir '(project-dir))) &body body)
   (with-gensyms (reports result)
-    `(if (asdf::getenv "COVERALLS")
+    `(if (and (stringp (asdf::getenv "COVERALLS"))
+              (string/= (asdf::getenv "COVERALLS") ""))
          (multiple-value-bind (,reports ,result)
              (get-coverage (lambda () ,@body)
                            :exclude ,exclude :project-dir ,project-dir)
