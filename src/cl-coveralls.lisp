@@ -22,7 +22,6 @@
                 :octets-to-string)
   (:import-from :alexandria
                 :when-let
-                :if-let
                 :with-gensyms
                 :ensure-list)
   (:export :with-coveralls
@@ -37,11 +36,13 @@
           (jsown:to-json
            `(:obj
              ("service_name" . ,(string-downcase (service-name)))
-             ,@(ecase (service-name)
-                 (:circleci (if-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
-                              `(("repo_token" . ,repo-token))
-                              `(("service_job_id" . ,(service-job-id)))))
-                 (:travis-ci `(("service_job_id" . ,(service-job-id)))))
+             ("service_job_id" . ,(service-job-id))
+             ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
+                 `(("repo_token" . ,repo-token)))
+             ,@(when-let (pullreq (pull-request-num))
+                 `(("service_pull_request" . ,pullreq)))
+             ,@(when-let (commit-sha (commit-sha))
+                 `(("commit_sha" . ,commit-sha)))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
                                         reports))))))
@@ -159,3 +160,13 @@
      (when-let (circleci-build-dir (asdf::getenv "CIRCLE_PROJECT_REPONAME"))
        (uiop:ensure-directory-pathname
         (merge-pathnames circleci-build-dir (user-homedir-pathname)))))))
+
+(defun commit-sha (&optional (service-name (service-name)))
+  (ecase service-name
+    (:travis-ci (asdf::getenv "TRAVIS_COMMIT"))
+    (:circleci (asdf::getenv "CIRCLE_SHA1"))))
+
+(defun pull-request-num (&optional (service-name (service-name)))
+  (ecase service-name
+    (:travis-ci (asdf::getenv "TRAVIS_PULL_REQUEST"))
+    (:circleci (asdf::getenv "CI_PULL_REQUEST"))))
