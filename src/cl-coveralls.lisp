@@ -113,7 +113,7 @@
                                             (t nil))
              when normalized-source-path collect
                `(("name" . ,normalized-source-path)
-                 ("source-digest" . ,(ironclad:byte-array-to-hex-string
+                 ("source_digest" . ,(ironclad:byte-array-to-hex-string
                                       (ironclad:digest-file :md5 source-path)))
                  ("coverage" . ,(get-coverage-from-report-file report-file))))
        result))))
