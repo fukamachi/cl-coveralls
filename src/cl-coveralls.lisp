@@ -169,4 +169,4 @@
 (defun pull-request-num (&optional (service-name (service-name)))
   (ecase service-name
     (:travis-ci (asdf::getenv "TRAVIS_PULL_REQUEST"))
-    (:circleci (asdf::getenv "CI_PULL_REQUEST"))))
+    (:circleci (asdf::getenv "CIRCLE_PR_NUMBER"))))
