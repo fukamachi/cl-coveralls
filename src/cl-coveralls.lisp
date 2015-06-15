@@ -51,6 +51,7 @@
         (let ((json-file (fad:with-open-temporary-file (out :direction :output :keep t)
                            (write-string json out)
                            (pathname out))))
+          (format t "~&Sending coverage report to Coveralls...~2%~A~%" json)
           (multiple-value-bind (body status)
               (drakma:http-request "https://coveralls.io/api/v1/jobs"
                                    :method :post
