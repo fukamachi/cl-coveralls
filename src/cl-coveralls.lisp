@@ -63,7 +63,7 @@
                      ("id" . ,(commit-sha))
                      ("author_name" . ,(author-name))
                      ("author_email" . ,(author-email))
-                     ("committer_name" . ,(commiter-name))
+                     ("committer_name" . ,(committer-name))
                      ("committer_email" . ,(committer-email))
                      ("message" . ,(commit-message))))
                  ("branch" . ,(git-branch))))
