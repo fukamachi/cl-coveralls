@@ -29,7 +29,8 @@
                :split-sequence)
   :components ((:module "src"
                 :components
-                ((:file "cl-coveralls" :depends-on ("impls"))
+                ((:file "cl-coveralls" :depends-on ("service" "impls"))
+                 (:file "service")
                  (:module "impls"
                   :depends-on ("util")
                   :components

@@ -2,6 +2,12 @@
 (defpackage cl-coveralls
   (:nicknames :coveralls)
   (:use :cl)
+  (:import-from :cl-coveralls.service
+                :service-name
+                :service-job-id
+                :project-dir
+                :commit-sha
+                :pull-request-num)
   (:import-from :cl-coveralls.impls
                 :enable-coverage
                 :disable-coverage
@@ -141,34 +147,3 @@
            (report-to-coveralls ,reports :dry-run ,dry-run)
            ,result)
          (progn ,@body))))
-
-(defun service-name ()
-  (cond
-    ((asdf::getenv "TRAVIS") :travis-ci)
-    ((asdf::getenv "CIRCLECI") :circleci)
-    (t :travis-ci)))
-
-(defun service-job-id (&optional (service-name (service-name)))
-  (ecase service-name
-    (:travis-ci (asdf::getenv "TRAVIS_JOB_ID"))
-    (:circleci (asdf::getenv "CIRCLE_BUILD_NUM"))))
-
-(defun project-dir (&optional (service-name (service-name)))
-  (ecase service-name
-    (:travis-ci
-     (when-let (travis-build-dir (asdf::getenv "TRAVIS_BUILD_DIR"))
-       (uiop:ensure-directory-pathname travis-build-dir)))
-    (:circleci
-     (when-let (circleci-build-dir (asdf::getenv "CIRCLE_PROJECT_REPONAME"))
-       (uiop:ensure-directory-pathname
-        (merge-pathnames circleci-build-dir (user-homedir-pathname)))))))
-
-(defun commit-sha (&optional (service-name (service-name)))
-  (ecase service-name
-    (:travis-ci (asdf::getenv "TRAVIS_COMMIT"))
-    (:circleci (asdf::getenv "CIRCLE_SHA1"))))
-
-(defun pull-request-num (&optional (service-name (service-name)))
-  (ecase service-name
-    (:travis-ci (asdf::getenv "TRAVIS_PULL_REQUEST"))
-    (:circleci (asdf::getenv "CIRCLE_PR_NUMBER"))))
