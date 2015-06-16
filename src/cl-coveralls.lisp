@@ -45,16 +45,13 @@
   (unless reports
     (return-from report-to-coveralls))
 
-  (let ((json
-          (jsown:to-json
+  (let* ((json-data
            `(:obj
              ("service_name" . ,(string-downcase (service-name)))
              ("service_job_id" . ,(service-job-id))
              ("service_number" . ,(service-job-id))
              ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
-                 `(("repo_token" . ,(if dry-run
-                                        "<Secret Coveralls Repo Token>"
-                                        repo-token))))
+                 `(("repo_token" . ,repo-token)))
              ,@(when-let (pullreq (pull-request-num))
                  `(("service_pull_request" . ,pullreq)))
              ("git"
@@ -70,13 +67,18 @@
                  ("branch" . ,(git-branch))))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
-                                        reports))))))
+                                        reports))))
+         (json (jsown:to-json json-data)))
+    ;; Mask the secret repo token
+    (when (assoc "repo_token"(cdr json-data) :test #'string=)
+      (rplacd (assoc "repo_token"(cdr json-data) :test #'string=)
+              "<Secret Coveralls Repo Token>"))
     (if dry-run
-        (prin1 json)
+        (prin1 json-data)
         (let ((json-file (fad:with-open-temporary-file (out :direction :output :keep t)
                            (write-string json out)
                            (pathname out))))
-          (format t "~&Sending coverage report to Coveralls...~2%~A~%" json)
+          (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
           (multiple-value-bind (body status)
               (drakma:http-request "https://coveralls.io/api/v1/jobs"
                                    :method :post
