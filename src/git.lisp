@@ -17,7 +17,9 @@
   (check-type command list)
   (let ((result
           (with-output-to-string (s)
-            (uiop:run-program `("git" "--git-dir" ,(princ-to-string project-dir) ,@command)
+            (uiop:run-program `("git" "--git-dir" ,(namestring
+                                                    (merge-pathnames #P".git"
+                                                                     (pathname project-dir))) ,@command)
                               :output s))))
     (if (ends-with-subseq #.(string #\Newline) result)
         (subseq result 0 (1- (length result)))
