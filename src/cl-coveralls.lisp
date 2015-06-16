@@ -49,7 +49,6 @@
            `(:obj
              ("service_name" . ,(string-downcase (service-name)))
              ("service_job_id" . ,(service-job-id))
-             ("service_number" . ,(service-job-id))
              ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
                  `(("repo_token" . ,repo-token)))
              ,@(when-let (pullreq (pull-request-num))
