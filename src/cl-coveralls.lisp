@@ -8,6 +8,13 @@
                 :project-dir
                 :commit-sha
                 :pull-request-num)
+  (:import-from :cl-coveralls.git
+                :git-branch
+                :author-name
+                :author-email
+                :committer-name
+                :committer-email
+                :commit-message)
   (:import-from :cl-coveralls.impls
                 :enable-coverage
                 :disable-coverage
@@ -47,8 +54,17 @@
                  `(("repo_token" . ,repo-token)))
              ,@(when-let (pullreq (pull-request-num))
                  `(("service_pull_request" . ,pullreq)))
-             ,@(when-let (commit-sha (commit-sha))
-                 `(("commit_sha" . ,commit-sha)))
+             ("git"
+              . (:obj
+                 ("head"
+                  . (:obj
+                     ("id" . ,(commit-sha))
+                     ("author_name" . ,(author-name))
+                     ("author_email" . ,(author-email))
+                     ("committer_name" . ,(commiter-name))
+                     ("committer_email" . ,(committer-email))
+                     ("message" . ,(commit-message))))
+                 ("branch" . ,(git-branch))))
              ("source_files" . ,(mapcar (lambda (report)
                                           `(:obj ,@report))
                                         reports))))))
