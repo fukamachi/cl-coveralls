@@ -16,6 +16,7 @@ This software is still ALPHA quality. The APIs will be likely to change.
 ### Supported CI services
 
 * [Travis CI](https://travis-ci.org)
+* [CircleCI](https://circleci.com)
 
 ### Number of entered
 
@@ -39,7 +40,7 @@ In your test script, wrap your test code with `coveralls:with-coveralls`.
 
 ## Examples
 
-* [Lack's .travis.yml](https://github.com/fukamachi/lack/blob/master/.travis.yml)
+* [Lack's circle.yml](https://github.com/fukamachi/lack/blob/master/circle.yml)
 
 ## Author
 
