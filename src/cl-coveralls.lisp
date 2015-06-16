@@ -51,7 +51,9 @@
              ("service_name" . ,(string-downcase (service-name)))
              ("service_job_id" . ,(service-job-id))
              ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
-                 `(("repo_token" . ,repo-token)))
+                 `(("repo_token" . ,(if dry-run
+                                        "<Secret Coveralls Repo Token>"
+                                        repo-token))))
              ,@(when-let (pullreq (pull-request-num))
                  `(("service_pull_request" . ,pullreq)))
              ("git"
