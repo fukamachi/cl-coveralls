@@ -38,6 +38,7 @@
                 :with-gensyms
                 :ensure-list)
   (:export :with-coveralls
+           :calc-system
            :calc-coverage))
 (in-package :cl-coveralls)
 
@@ -148,6 +149,11 @@
                                       (ironclad:digest-file :md5 source-path)))
                  ("coverage" . ,(get-coverage-from-report-file report-file))))
        result))))
+
+(defun calc-system (system &key exclude)
+  (calc-coverage (lambda () (asdf:test-system system))
+                 :project-dir (asdf:system-source-directory system)
+                 :exclude exclude))
 
 (defun calc-coverage (fn &key project-dir exclude)
   (unless project-dir
