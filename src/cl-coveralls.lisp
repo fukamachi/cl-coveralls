@@ -24,8 +24,6 @@
                 :get-coverage-from-report-file)
   (:import-from :drakma
                 :http-request)
-  (:import-from :cl-fad
-                :with-open-temporary-file)
   (:import-from :ironclad
                 :byte-array-to-hex-string
                 :digest-file)
@@ -75,7 +73,7 @@
               "<Secret Coveralls Repo Token>"))
     (if dry-run
         (prin1 json-data)
-        (let ((json-file (fad:with-open-temporary-file (out :direction :output :keep t)
+        (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
                            (write-string json out)
                            (pathname out))))
           (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)

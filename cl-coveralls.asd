@@ -22,7 +22,6 @@
                :jsown
                :drakma
                :uiop
-               :cl-fad
                :cl-ppcre
                :flexi-streams
                :alexandria

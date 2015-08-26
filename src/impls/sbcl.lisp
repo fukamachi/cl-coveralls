@@ -7,8 +7,6 @@
   (:import-from :lquery
                 :$
                 :initialize)
-  (:import-from :cl-fad
-                :list-directory)
   (:export :enable-coverage
            :disable-coverage
            :initialize-coverage
@@ -34,7 +32,7 @@
     (let ((*error-output* (make-broadcast-stream)))
       (sb-cover:report report-dir))
     (remove "cover-index.html"
-            (fad:list-directory report-dir)
+            (uiop:directory-files report-dir)
             :key #'file-namestring
             :test #'string=)))
 

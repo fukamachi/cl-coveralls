@@ -4,8 +4,6 @@
   (:use :cl)
   (:import-from :cl-coveralls.util
                 :get-report-directory)
-  (:import-from :cl-fad
-                :list-directory)
   (:import-from :alexandria
                 :starts-with-subseq
                 :ends-with-subseq
@@ -40,7 +38,7 @@
      (lambda (file)
        (and (not (string= (file-namestring file) "report.html"))
             (string= (pathname-type file) "html")))
-     (fad:list-directory report-dir))))
+     (uiop:directory-files report-dir))))
 
 (defun source-path-of-report-file (html)
   (let ((path
