@@ -22,13 +22,9 @@
                 :finalize-coverage
                 :source-path-of-report-file
                 :get-coverage-from-report-file)
-  (:import-from :drakma
-                :http-request)
   (:import-from :ironclad
                 :byte-array-to-hex-string
                 :digest-file)
-  (:import-from :jsown
-                :to-json)
   (:import-from :flexi-streams
                 :octets-to-string)
   (:import-from :alexandria
@@ -45,31 +41,26 @@
     (return-from report-to-coveralls))
 
   (let* ((json-data
-           `(:obj
-             ("service_name" . ,(string-downcase (service-name)))
+           `(("service_name" . ,(string-downcase (service-name)))
              ("service_job_id" . ,(service-job-id))
              ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
                  `(("repo_token" . ,repo-token)))
              ,@(when-let (pullreq (pull-request-num))
                  `(("service_pull_request" . ,pullreq)))
              ("git"
-              . (:obj
-                 ("head"
-                  . (:obj
-                     ("id" . ,(commit-sha))
+              . (("head"
+                  . (("id" . ,(commit-sha))
                      ("author_name" . ,(author-name))
                      ("author_email" . ,(author-email))
                      ("committer_name" . ,(committer-name))
                      ("committer_email" . ,(committer-email))
                      ("message" . ,(commit-message))))
                  ("branch" . ,(git-branch))))
-             ("source_files" . ,(mapcar (lambda (report)
-                                          `(:obj ,@report))
-                                        reports))))
-         (json (jsown:to-json json-data)))
+             ("source_files" . ,(coerce reports 'simple-vector))))
+         (json (jojo:to-json json-data :from :alist)))
     ;; Mask the secret repo token
-    (when (assoc "repo_token"(cdr json-data) :test #'string=)
-      (rplacd (assoc "repo_token"(cdr json-data) :test #'string=)
+    (when (assoc "repo_token" (cdr json-data) :test #'string=)
+      (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
               "<Secret Coveralls Repo Token>"))
     (if dry-run
         (prin1 json-data)
@@ -77,15 +68,9 @@
                            (write-string json out)
                            (pathname out))))
           (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
-          (multiple-value-bind (body status)
-              (drakma:http-request "https://coveralls.io/api/v1/jobs"
-                                   :method :post
-                                   :parameters `(("json_file" ,json-file
-                                                              :content-type "application/json"
-                                                              :filename ,(file-namestring json-file)))
-                                   :force-binary t)
-            (unless (= status 200)
-              (error "An HTTP request failed: ~A" (flex:octets-to-string body :external-format :utf-8))))))))
+          (handler-bind ((dex:http-request-failed (dex:retry-request 5 :interval 3)))
+            (dex:post "https://coveralls.io/api/v1/jobs"
+                      :content `(("json_file" . ,json-file))))))))
 
 (defun pathname-in-directory-p (path directory)
   (let ((directory (pathname-directory directory))

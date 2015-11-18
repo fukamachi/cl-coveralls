@@ -19,8 +19,8 @@
   :depends-on (#+sbcl :sb-cover
                :ironclad
                :lquery
-               :jsown
-               :drakma
+               :jonathan
+               :dexador
                :uiop
                :cl-ppcre
                :flexi-streams
