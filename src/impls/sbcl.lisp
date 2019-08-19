@@ -11,6 +11,7 @@
            :disable-coverage
            :initialize-coverage
            :finalize-coverage
+           :report-files
            :source-path-of-report-file
            :get-coverage-from-report-file))
 (in-package :cl-coveralls.impls.sbcl)
@@ -31,10 +32,13 @@
     (ensure-directories-exist report-dir)
     (let ((*error-output* (make-broadcast-stream)))
       (sb-cover:report report-dir))
-    (remove "cover-index.html"
-            (uiop:directory-files report-dir)
-            :key #'file-namestring
-            :test #'string=)))
+    (report-files report-dir)))
+
+(defun report-files (report-dir)
+  (remove "cover-index.html"
+          (uiop:directory-files report-dir)
+          :key #'file-namestring
+          :test #'string=))
 
 (defun source-path-of-report-file (html)
   (string-right-trim '(#\Newline #\Space)

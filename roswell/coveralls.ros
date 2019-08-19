@@ -1,0 +1,28 @@
+#!/bin/sh
+#|-*- mode:lisp -*-|#
+#|
+exec ros -Q -- $0 "$@"
+|#
+(progn ;;init forms
+  (ros:ensure-asdf)
+  #+quicklisp (ql:quickload '(#:cl-coveralls) :silent t))
+
+(defpackage :ros.script.coveralls.3775229089
+  (:use :cl)
+  (:import-from #:cl-coveralls.impls
+                #:report-files)
+  (:import-from #:cl-coveralls
+                #:report-to-coveralls
+                #:parse-report-files))
+(in-package :ros.script.coveralls.3775229089)
+
+(defun main (&rest argv)
+  (let ((report-dir (uiop:ensure-directory-pathname (first argv))))
+    (unless report-dir
+      (format *error-output* "~&Error: report directory not found: ~A~%" (first argv))
+      (uiop:quit -1))
+    (let* ((files (report-files report-dir))
+           (reports
+             (parse-report-files files :project-dir *default-pathname-defaults*)))
+      (report-to-coveralls reports))))
+;;; vim: set ft=lisp lisp:

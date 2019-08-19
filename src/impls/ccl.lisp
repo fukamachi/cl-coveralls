@@ -14,6 +14,7 @@
            :disable-coverage
            :initialize-coverage
            :finalize-coverage
+           :report-files
            :source-path-of-report-file
            :get-coverage-from-report-file))
 (in-package :cl-coveralls.impls.ccl)
@@ -34,11 +35,14 @@
     (handler-case (ccl:report-coverage (merge-pathnames #P"report.html" report-dir))
       (error (e)
         (warn (princ-to-string e))))
-    (remove-if-not
-     (lambda (file)
-       (and (not (string= (file-namestring file) "report.html"))
-            (string= (pathname-type file) "html")))
-     (uiop:directory-files report-dir))))
+    (report-files report-dir)))
+
+(defun report-files (report-dir)
+  (remove-if-not
+    (lambda (file)
+      (and (not (string= (file-namestring file) "report.html"))
+           (string= (pathname-type file) "html")))
+    (uiop:directory-files report-dir)))
 
 (defun source-path-of-report-file (html)
   (let ((path

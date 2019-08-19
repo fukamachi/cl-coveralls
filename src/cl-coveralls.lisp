@@ -92,46 +92,50 @@
      (string (merge-pathnames (pathname path) root-dir))
      (pathname path))))
 
+(defun parse-report-files (report-files &key exclude project-dir)
+  (let ((root-dir (namestring (probe-file project-dir))))
+    (loop for report-file in report-files
+          for source-path = (source-path-of-report-file report-file)
+          for normalized-source-path = (cond
+                                         ((null source-path))
+                                         ((null root-dir) source-path)
+                                         ((and (pathname-in-directory-p source-path root-dir)
+                                               (not (find source-path
+                                                          (ensure-list exclude)
+                                                          :key (lambda (path)
+                                                                 (normalize-exclude-path root-dir path))
+                                                          :test (lambda (path1 path2)
+                                                                  (when path2
+                                                                    (setf path1 (merge-pathnames path1 root-dir))
+                                                                    (if (uiop:directory-pathname-p path2)
+                                                                        (pathname-in-directory-p path1 path2)
+                                                                        (equal path1 path2)))))))
+                                          (subseq source-path (length root-dir)))
+                                         (t nil))
+          when normalized-source-path collect
+          `(("name" . ,normalized-source-path)
+            ("source_digest" . ,(ironclad:byte-array-to-hex-string
+                                  (ironclad:digest-file :md5 source-path)))
+            ("coverage" . ,(get-coverage-from-report-file report-file))))))
+
 (defun get-coverage (fn &key exclude project-dir)
   (unless project-dir
     (error "Project directory is undefined"))
-  (let ((root-dir (namestring (probe-file project-dir))))
-    (initialize-coverage)
-    (loop for file in (uiop:directory-files project-dir)
-          when (string= (pathname-type file) "asd")
-            do (let ((system-name (pathname-name file)))
-                 (if (asdf:component-loaded-p system-name)
-                     (handler-bind (#+sbcl (warning #'muffle-warning))
-                       (asdf:load-system system-name :force t))
-                     #+quicklisp (ql:quickload system-name)
-                     #-quicklisp (asdf:load-system system-name))))
-    (let ((result (unwind-protect (funcall fn)
-                    (disable-coverage))))
-      (values
-       (loop for report-file in (finalize-coverage)
-             for source-path = (source-path-of-report-file report-file)
-             for normalized-source-path = (cond
-                                            ((null source-path))
-                                            ((null root-dir) source-path)
-                                            ((and (pathname-in-directory-p source-path root-dir)
-                                                  (not (find source-path
-                                                             (ensure-list exclude)
-                                                             :key (lambda (path)
-                                                                    (normalize-exclude-path root-dir path))
-                                                             :test (lambda (path1 path2)
-                                                                     (when path2
-                                                                       (setf path1 (merge-pathnames path1 root-dir))
-                                                                       (if (uiop:directory-pathname-p path2)
-                                                                           (pathname-in-directory-p path1 path2)
-                                                                           (equal path1 path2)))))))
-                                             (subseq source-path (length root-dir)))
-                                            (t nil))
-             when normalized-source-path collect
-               `(("name" . ,normalized-source-path)
-                 ("source_digest" . ,(ironclad:byte-array-to-hex-string
-                                      (ironclad:digest-file :md5 source-path)))
-                 ("coverage" . ,(get-coverage-from-report-file report-file))))
-       result))))
+  (initialize-coverage)
+  (loop for file in (uiop:directory-files project-dir)
+        when (string= (pathname-type file) "asd")
+        do (let ((system-name (pathname-name file)))
+             (if (asdf:component-loaded-p system-name)
+                 (handler-bind (#+sbcl (warning #'muffle-warning))
+                   (asdf:load-system system-name :force t))
+                 #+quicklisp (ql:quickload system-name)
+               #-quicklisp (asdf:load-system system-name))))
+  (let ((result (unwind-protect (funcall fn)
+                  (disable-coverage)))
+        (report-files (finalize-coverage)))
+    (values
+      (parse-report-files report-files :exclude exclude :project-dir project-dir)
+      result)))
 
 (defun calc-system (system &key exclude)
   (calc-coverage (lambda () (asdf:test-system system))
