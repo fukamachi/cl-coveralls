@@ -25,7 +25,8 @@
                :cl-ppcre
                :flexi-streams
                :alexandria
-               :split-sequence)
+               :split-sequence
+               :cl-yaclyaml)
   :components ((:module "src"
                 :components
                 ((:file "cl-coveralls" :depends-on ("service" "git" "impls"))
