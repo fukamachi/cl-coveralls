@@ -40,7 +40,7 @@ In your test script, wrap your test code with `coveralls:with-coveralls`.
 
 ## Examples
 
-* [Lack's circle.yml](https://github.com/fukamachi/lack/blob/master/circle.yml)
+* [Lack's .travis.yml](https://github.com/fukamachi/lack/blob/master/.travis.yml)
 
 ## Author
 
