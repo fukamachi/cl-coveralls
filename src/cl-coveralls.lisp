@@ -40,8 +40,9 @@
   (unless reports
     (return-from report-to-coveralls))
 
-  (let* ((json-data
-           `(("service_name" . ,(string-downcase (service-name)))
+  (let* ((service (service-name))
+         (json-data
+           `(("service_name" . ,(string-downcase service))
              ("service_job_id" . ,(service-job-id))
              ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
                  `(("repo_token" . ,repo-token)))
@@ -62,15 +63,19 @@
     (when (assoc "repo_token" (cdr json-data) :test #'string=)
       (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
               "<Secret Coveralls Repo Token>"))
-    (if dry-run
-        (prin1 json-data)
-        (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
-                           (write-string json out)
-                           (pathname out))))
-          (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
-          (handler-bind ((dex:http-request-failed (dex:retry-request 5 :interval 3)))
-            (dex:post "https://coveralls.io/api/v1/jobs"
-                      :content `(("json_file" . ,json-file))))))))
+    (cond
+      ((or dry-run
+           (eql service
+                :manual))
+       (prin1 json-data))
+      (t
+       (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
+                          (write-string json out)
+                          (pathname out))))
+         (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
+         (handler-bind ((dex:http-request-failed (dex:retry-request 5 :interval 3)))
+           (dex:post "https://coveralls.io/api/v1/jobs"
+                     :content `(("json_file" . ,json-file)))))))))
 
 (defun pathname-in-directory-p (path directory)
   (let ((directory (pathname-directory directory))
@@ -152,6 +157,11 @@
         finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir '(project-dir))) &body body)
+  "Sends coverage report to the Coveralls.
+
+   If dry run specified or code started not inside one of supported CI service,
+   then just prints JSON prepared for sending.
+   "
   (with-gensyms (reports result)
     `(if (and (stringp (asdf::getenv "COVERALLS"))
               (string/= (asdf::getenv "COVERALLS") ""))
