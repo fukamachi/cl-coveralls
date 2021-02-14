@@ -68,20 +68,24 @@
                        ("message" . ,(commit-message))))
                    ("branch" . ,(git-branch))))
                ("source_files" . ,(coerce reports 'simple-vector))))
-           (json (jojo:to-json json-data :from :alist)))
-      ;; Mask the secret repo token
-      (when (assoc "repo_token" (cdr json-data) :test #'string=)
-        (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
-                "<Secret Coveralls Repo Token>"))
+           (json (jojo:to-json json-data :from :alist))
+           (secure-json (progn
+                          ;; Mask the secret repo token
+                          (when (assoc "repo_token" (cdr json-data) :test #'string=)
+                            (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
+                                    "<Secret Coveralls Repo Token>"))
+                          (jojo:to-json json-data :from :alist))))
+
       (cond
         (dry-run
-         (prin1 json-data))
+         ;; Here we convert data again
+         (prin1 secure-json))
         (t
          (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
                             (write-string json out)
                             (pathname out)))
                (retry-handler (dex:retry-request 5 :interval 3)))
-           (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
+           (format t "~&Sending coverage report to Coveralls...~2%~S~%" secure-json)
            (handler-bind ((dex:http-request-failed (lambda (c)
                                                      (format t "Server respond with: ~A~%~A~%Retrying~%"
                                                              (dex:response-status c)
