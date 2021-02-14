@@ -41,13 +41,18 @@
     (return-from report-to-coveralls))
 
   (let ((repo-token (or (uiop:getenv "COVERALLS_REPO_TOKEN")
-                        "")))
-    (when (string= repo-token "")
+                        ""))
+        (service (service-name)))
+    (when (eql service
+               :manual)
+      (setf dry-run t))
+    
+    (when (and (string= repo-token "")
+               (not dry-run))
       ;; https://docs.coveralls.io/api-reference says "repo_token" is required
       (error "Please, set COVERALLS_REPO_TOKEN env variable. It is required."))
     
-    (let* ((service (service-name))
-           (json-data
+    (let* ((json-data
              `(("service_name" . ,(string-downcase service))
                ("service_job_id" . ,(service-job-id))
                ("repo_token" . ,repo-token)
@@ -69,9 +74,7 @@
         (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
                 "<Secret Coveralls Repo Token>"))
       (cond
-        ((or dry-run
-             (eql service
-                  :manual))
+        (dry-run
          (prin1 json-data))
         (t
          (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
