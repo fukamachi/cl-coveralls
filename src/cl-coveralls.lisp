@@ -82,6 +82,8 @@
          (format t "~A~%"
                  secure-json))
         (t
+         (format t "Requesting data for ~A~%"
+                 repo-token)
          (multiple-value-bind (response code headers)
              (dex:get "https://api.github.com/user"
                       :headers (list (cons "Authorization"
@@ -92,7 +94,7 @@
            (let* ((parsed (jonathan:parse response))
                   (login (getf parsed :|login|))
                   (scopes (gethash "x-oauth-scopes" headers)))
-             (format t "You are logged in as ~A with following scopes: ~A"
+             (format t "You are logged in as ~A with following scopes: ~A~%"
                      login
                      scopes)))
          
