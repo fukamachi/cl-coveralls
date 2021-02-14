@@ -82,22 +82,6 @@
          (format t "~A~%"
                  secure-json))
         (t
-         (format t "Requesting data for ~A~%"
-                 repo-token)
-         (multiple-value-bind (response code headers)
-             (dex:get "https://api.github.com/user"
-                      :headers (list (cons "Authorization"
-                                           (format nil "token ~A"
-                                                   repo-token))))
-           (declare (ignorable code))
-      
-           (let* ((parsed (jonathan:parse response))
-                  (login (getf parsed :|login|))
-                  (scopes (gethash "x-oauth-scopes" headers)))
-             (format t "You are logged in as ~A with following scopes: ~A~%"
-                     login
-                     scopes)))
-         
          (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
                             (write-string json out)
                             (pathname out)))
@@ -107,9 +91,8 @@
                                                      (format t "Server respond with: ~A~%~A~%Retrying~%"
                                                              (dex:response-status c)
                                                              (dex:response-body c))
-                                                     ;; (funcall retry-handler
-                                                     ;;          c)
-                                                     )))
+                                                     (funcall retry-handler
+                                                              c))))
              (dex:post "https://coveralls.io/api/v1/jobs"
                        :content `(("json_file" . ,json-file))))))))))
 
