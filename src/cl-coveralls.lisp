@@ -40,48 +40,53 @@
   (unless reports
     (return-from report-to-coveralls))
 
-  (let* ((service (service-name))
-         (json-data
-           `(("service_name" . ,(string-downcase service))
-             ("service_job_id" . ,(service-job-id))
-             ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
-                 `(("repo_token" . ,repo-token)))
-             ,@(when-let (pullreq (pull-request-num))
-                 `(("service_pull_request" . ,pullreq)))
-             ("git"
-              . (("head"
-                  . (("id" . ,(commit-sha))
-                     ("author_name" . ,(author-name))
-                     ("author_email" . ,(author-email))
-                     ("committer_name" . ,(committer-name))
-                     ("committer_email" . ,(committer-email))
-                     ("message" . ,(commit-message))))
-                 ("branch" . ,(git-branch))))
-             ("source_files" . ,(coerce reports 'simple-vector))))
-         (json (jojo:to-json json-data :from :alist)))
-    ;; Mask the secret repo token
-    (when (assoc "repo_token" (cdr json-data) :test #'string=)
-      (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
-              "<Secret Coveralls Repo Token>"))
-    (cond
-      ((or dry-run
-           (eql service
-                :manual))
-       (prin1 json-data))
-      (t
-       (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
-                          (write-string json out)
-                          (pathname out)))
-             (retry-handler (dex:retry-request 5 :interval 3)))
-         (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
-         (handler-bind ((dex:http-request-failed (lambda (c)
-                                                   (format t "Server respond with: ~A~%~A~%Retrying~%"
-                                                           (dex:response-status c)
-                                                           (dex:response-body c))
-                                                   (funcall retry-handler
-                                                            c))))
-           (dex:post "https://coveralls.io/api/v1/jobs"
-                     :content `(("json_file" . ,json-file)))))))))
+  (let ((repo-token (or (uiop:getenv "COVERALLS_REPO_TOKEN")
+                        "")))
+    (when (string= repo-token "")
+      ;; https://docs.coveralls.io/api-reference says "repo_token" is required
+      (error "Please, set COVERALLS_REPO_TOKEN env variable. It is required."))
+    
+    (let* ((service (service-name))
+           (json-data
+             `(("service_name" . ,(string-downcase service))
+               ("service_job_id" . ,(service-job-id))
+               ("repo_token" . ,repo-token)
+               ,@(when-let (pullreq (pull-request-num))
+                   `(("service_pull_request" . ,pullreq)))
+               ("git"
+                . (("head"
+                    . (("id" . ,(commit-sha))
+                       ("author_name" . ,(author-name))
+                       ("author_email" . ,(author-email))
+                       ("committer_name" . ,(committer-name))
+                       ("committer_email" . ,(committer-email))
+                       ("message" . ,(commit-message))))
+                   ("branch" . ,(git-branch))))
+               ("source_files" . ,(coerce reports 'simple-vector))))
+           (json (jojo:to-json json-data :from :alist)))
+      ;; Mask the secret repo token
+      (when (assoc "repo_token" (cdr json-data) :test #'string=)
+        (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
+                "<Secret Coveralls Repo Token>"))
+      (cond
+        ((or dry-run
+             (eql service
+                  :manual))
+         (prin1 json-data))
+        (t
+         (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
+                            (write-string json out)
+                            (pathname out)))
+               (retry-handler (dex:retry-request 5 :interval 3)))
+           (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
+           (handler-bind ((dex:http-request-failed (lambda (c)
+                                                     (format t "Server respond with: ~A~%~A~%Retrying~%"
+                                                             (dex:response-status c)
+                                                             (dex:response-body c))
+                                                     (funcall retry-handler
+                                                              c))))
+             (dex:post "https://coveralls.io/api/v1/jobs"
+                       :content `(("json_file" . ,json-file))))))))))
 
 (defun pathname-in-directory-p (path directory)
   (let ((directory (pathname-directory directory))
