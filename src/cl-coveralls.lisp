@@ -71,9 +71,15 @@
       (t
        (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
                           (write-string json out)
-                          (pathname out))))
+                          (pathname out)))
+             (retry-handler (dex:retry-request 5 :interval 3)))
          (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
-         (handler-bind ((dex:http-request-failed (dex:retry-request 5 :interval 3)))
+         (handler-bind ((dex:http-request-failed (lambda (c)
+                                                   (format t "Server respond with: ~A~%~A~%Retrying~%"
+                                                           (dex:response-status c)
+                                                           (dex:response-body c))
+                                                   (funcall retry-handler
+                                                            c))))
            (dex:post "https://coveralls.io/api/v1/jobs"
                      :content `(("json_file" . ,json-file)))))))))
 
