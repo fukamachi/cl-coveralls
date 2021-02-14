@@ -86,7 +86,7 @@
                             (write-string json out)
                             (pathname out)))
                (retry-handler (dex:retry-request 5 :interval 3)))
-           (format t "~&Sending coverage report to Coveralls...~2%~S~%" secure-json)
+           (format t "~&Sending coverage report to Coveralls...~2%~A~%" secure-json)
            (handler-bind ((dex:http-request-failed (lambda (c)
                                                      (format t "Server respond with: ~A~%~A~%Retrying~%"
                                                              (dex:response-status c)
