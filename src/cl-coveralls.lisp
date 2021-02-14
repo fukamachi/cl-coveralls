@@ -79,7 +79,8 @@
       (cond
         (dry-run
          ;; Here we convert data again
-         (prin1 secure-json))
+         (format t "~A~%"
+                 secure-json))
         (t
          (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
                             (write-string json out)
