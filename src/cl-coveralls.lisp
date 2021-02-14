@@ -86,8 +86,9 @@
                                                      (format t "Server respond with: ~A~%~A~%Retrying~%"
                                                              (dex:response-status c)
                                                              (dex:response-body c))
-                                                     (funcall retry-handler
-                                                              c))))
+                                                     ;; (funcall retry-handler
+                                                     ;;          c)
+                                                     )))
              (dex:post "https://coveralls.io/api/v1/jobs"
                        :content `(("json_file" . ,json-file))))))))))
 
