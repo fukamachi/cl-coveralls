@@ -28,6 +28,7 @@
 
 (defun git-branch ()
   (or (uiop:getenv "GIT_BRANCH")
+      (uiop:getenv "GITHUB_REF")
       (git '("rev-parse" "--abbrev-ref" "HEAD"))))
 
 (defun git-sha ()
