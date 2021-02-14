@@ -70,9 +70,9 @@
                ("source_files" . ,(coerce reports 'simple-vector))))
            (json (jojo:to-json json-data :from :alist)))
       ;; Mask the secret repo token
-      ;; (when (assoc "repo_token" (cdr json-data) :test #'string=)
-      ;;   (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
-      ;;           "<Secret Coveralls Repo Token>"))
+      (when (assoc "repo_token" (cdr json-data) :test #'string=)
+        (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
+                "<Secret Coveralls Repo Token>"))
       (cond
         (dry-run
          (prin1 json-data))
