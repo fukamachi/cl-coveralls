@@ -87,12 +87,15 @@
                             (pathname out)))
                (retry-handler (dex:retry-request 5 :interval 3)))
            (format t "~&Sending coverage report to Coveralls...~2%~A~%" secure-json)
-           (handler-bind ((dex:http-request-failed (lambda (c)
-                                                     (format t "Server respond with: ~A~%~A~%Retrying~%"
-                                                             (dex:response-status c)
-                                                             (dex:response-body c))
-                                                     (funcall retry-handler
-                                                              c))))
+           (handler-bind ((dex:http-request-failed
+                            (lambda (c)
+                              (let ((headers (alexandria:hash-table-alist (dex:response-headers c))))
+                                (format t "Server respond with: ~A~2%Headers:~%~S~2%Body:~%~A~2%Retrying~%"
+                                        (dex:response-status c)
+                                        headers
+                                        (dex:response-body c)))
+                              (funcall retry-handler
+                                       c))))
              (dex:post "https://coveralls.io/api/v1/jobs"
                        :content `(("json_file" . ,json-file))))))))))
 
