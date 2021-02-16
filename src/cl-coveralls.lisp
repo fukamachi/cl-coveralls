@@ -36,6 +36,21 @@
            :calc-coverage))
 (in-package :cl-coveralls)
 
+
+(defun mask-secret (text)
+  (let* ((len (length text))
+         (max-prefix-len 4)
+         (prefix-len (min (floor (/ len 4))
+                          max-prefix-len)))
+    (with-output-to-string (s)
+      (write-string (subseq text 0 prefix-len)
+                    s)
+      (loop for i below (- len (* 2 prefix-len))
+            do (write-char #\* s))
+      (write-string (subseq text (- len prefix-len))
+                    s))))
+
+
 (defun report-to-coveralls (reports &key dry-run)
   (unless reports
     (return-from report-to-coveralls))
@@ -53,27 +68,29 @@
       (error "Please, set COVERALLS_REPO_TOKEN env variable. It is required."))
     
     (let* ((json-data
-             `(("service_name" . ,(string-downcase service))
-               ("service_job_id" . ,(service-job-id))
-               ("repo_token" . ,repo-token)
-               ,@(when-let (pullreq (pull-request-num))
-                   `(("service_pull_request" . ,pullreq)))
-               ("git"
-                . (("head"
-                    . (("id" . ,(commit-sha))
-                       ("author_name" . ,(author-name))
-                       ("author_email" . ,(author-email))
-                       ("committer_name" . ,(committer-name))
-                       ("committer_email" . ,(committer-email))
-                       ("message" . ,(commit-message))))
-                   ("branch" . ,(git-branch))))
-               ("source_files" . ,(coerce reports 'simple-vector))))
+             (append
+              (list (cons "service_name" (string-downcase service))
+                    (cons "service_job_id" (service-job-id))
+                    (cons "repo_token" repo-token))
+              (when-let (pullreq (pull-request-num))
+                (list (cons "service_pull_request" pullreq)))
+              (list
+               (cons "git" (list
+                            (cons "head"
+                                  (list (cons "id" (commit-sha))
+                                        (cons "author_name" (author-name))
+                                        (cons "author_email" (author-email))
+                                        (cons "committer_name" (committer-name))
+                                        (cons "committer_email" (committer-email))
+                                        (cons "message" (commit-message))))
+                            (cons "branch" (git-branch))))
+               (cons "source_files" (coerce reports 'simple-vector)))))
            (json (jojo:to-json json-data :from :alist))
            (secure-json (progn
                           ;; Mask the secret repo token
-                          (when (assoc "repo_token" (cdr json-data) :test #'string=)
+                          (when repo-token
                             (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
-                                    "<Secret Coveralls Repo Token>"))
+                                    (mask-secret repo-token)))
                           (jojo:to-json json-data :from :alist))))
 
       (cond
