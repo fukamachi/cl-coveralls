@@ -51,6 +51,12 @@
                     s))))
 
 
+(defun ensure-string (value)
+  (typecase value
+    (string value)
+    (t (format nil "~A" value))))
+
+
 (defun report-to-coveralls (reports &key dry-run)
   (unless reports
     (return-from report-to-coveralls))
@@ -73,7 +79,11 @@
                     (cons "service_job_id" (service-job-id))
                     (cons "repo_token" repo-token))
               (when-let (pullreq (pull-request-num))
-                (list (cons "service_pull_request" pullreq)))
+                (list (cons "service_pull_request"
+                            ;; API expects this number
+                            ;; to be a string:
+                            ;; https://github.com/lemurheavy/coveralls-public/issues/1527#issuecomment-780812527
+                            (ensure-string pullreq))))
               (list
                (cons "git" (list
                             (cons "head"
