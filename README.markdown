@@ -17,6 +17,8 @@ This software is still ALPHA quality. The APIs will be likely to change.
 
 * [Travis CI](https://travis-ci.org)
 * [CircleCI](https://circleci.com)
+* [GitHub Actions](https://docs.github.com/en/actions), there is also
+  a ready to use action [40ants/run-tests](https://github.com/40ants/run-tests).
 
 ### Number of entered
 
