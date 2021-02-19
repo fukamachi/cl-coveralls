@@ -36,41 +36,95 @@
            :calc-coverage))
 (in-package :cl-coveralls)
 
+
+(defun mask-secret (text)
+  (let* ((len (length text))
+         (max-prefix-len 4)
+         (prefix-len (min (floor (/ len 4))
+                          max-prefix-len)))
+    (with-output-to-string (s)
+      (write-string (subseq text 0 prefix-len)
+                    s)
+      (loop for i below (- len (* 2 prefix-len))
+            do (write-char #\* s))
+      (write-string (subseq text (- len prefix-len))
+                    s))))
+
+
+(defun ensure-string (value)
+  (typecase value
+    (string value)
+    (t (format nil "~A" value))))
+
+
 (defun report-to-coveralls (reports &key dry-run)
   (unless reports
     (return-from report-to-coveralls))
 
-  (let* ((json-data
-           `(("service_name" . ,(string-downcase (service-name)))
-             ("service_job_id" . ,(service-job-id))
-             ,@(when-let (repo-token (asdf::getenv "COVERALLS_REPO_TOKEN"))
-                 `(("repo_token" . ,repo-token)))
-             ,@(when-let (pullreq (pull-request-num))
-                 `(("service_pull_request" . ,pullreq)))
-             ("git"
-              . (("head"
-                  . (("id" . ,(commit-sha))
-                     ("author_name" . ,(author-name))
-                     ("author_email" . ,(author-email))
-                     ("committer_name" . ,(committer-name))
-                     ("committer_email" . ,(committer-email))
-                     ("message" . ,(commit-message))))
-                 ("branch" . ,(git-branch))))
-             ("source_files" . ,(coerce reports 'simple-vector))))
-         (json (jojo:to-json json-data :from :alist)))
-    ;; Mask the secret repo token
-    (when (assoc "repo_token" (cdr json-data) :test #'string=)
-      (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
-              "<Secret Coveralls Repo Token>"))
-    (if dry-run
-        (prin1 json-data)
-        (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
-                           (write-string json out)
-                           (pathname out))))
-          (format t "~&Sending coverage report to Coveralls...~2%~S~%" json-data)
-          (handler-bind ((dex:http-request-failed (dex:retry-request 5 :interval 3)))
-            (dex:post "https://coveralls.io/api/v1/jobs"
-                      :content `(("json_file" . ,json-file))))))))
+  (let ((repo-token (or (uiop:getenv "COVERALLS_REPO_TOKEN")
+                        ""))
+        (service (service-name)))
+    (when (eql service
+               :manual)
+      (setf dry-run t))
+    
+    (when (and (string= repo-token "")
+               (not dry-run))
+      ;; https://docs.coveralls.io/api-reference says "repo_token" is required
+      (error "Please, set COVERALLS_REPO_TOKEN env variable. It is required."))
+    
+    (let* ((json-data
+             (append
+              (list (cons "service_name" (string-downcase service))
+                    (cons "service_job_id" (service-job-id))
+                    (cons "repo_token" repo-token))
+              (when-let (pullreq (pull-request-num))
+                (list (cons "service_pull_request"
+                            ;; API expects this number
+                            ;; to be a string:
+                            ;; https://github.com/lemurheavy/coveralls-public/issues/1527#issuecomment-780812527
+                            (ensure-string pullreq))))
+              (list
+               (cons "git" (list
+                            (cons "head"
+                                  (list (cons "id" (commit-sha))
+                                        (cons "author_name" (author-name))
+                                        (cons "author_email" (author-email))
+                                        (cons "committer_name" (committer-name))
+                                        (cons "committer_email" (committer-email))
+                                        (cons "message" (commit-message))))
+                            (cons "branch" (git-branch))))
+               (cons "source_files" (coerce reports 'simple-vector)))))
+           (json (jojo:to-json json-data :from :alist))
+           (secure-json (progn
+                          ;; Mask the secret repo token
+                          (when repo-token
+                            (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
+                                    (mask-secret repo-token)))
+                          (jojo:to-json json-data :from :alist))))
+
+      (cond
+        (dry-run
+         ;; Here we convert data again
+         (format t "~A~%"
+                 secure-json))
+        (t
+         (let ((json-file (uiop:with-temporary-file (:stream out :direction :output :keep t)
+                            (write-string json out)
+                            (pathname out)))
+               (retry-handler (dex:retry-request 5 :interval 3)))
+           (format t "~&Sending coverage report to Coveralls...~2%~A~%" secure-json)
+           (handler-bind ((dex:http-request-failed
+                            (lambda (c)
+                              (let ((headers (alexandria:hash-table-alist (dex:response-headers c))))
+                                (format t "Server respond with: ~A~2%Headers:~%~S~2%Body:~%~A~2%Retrying~%"
+                                        (dex:response-status c)
+                                        headers
+                                        (dex:response-body c)))
+                              (funcall retry-handler
+                                       c))))
+             (dex:post "https://coveralls.io/api/v1/jobs"
+                       :content `(("json_file" . ,json-file))))))))))
 
 (defun pathname-in-directory-p (path directory)
   (let ((directory (pathname-directory directory))
@@ -152,6 +206,11 @@
         finally (return (/ (round (* (/ pass all) 10000)) 100.0))))
 
 (defmacro with-coveralls ((&key exclude dry-run (project-dir '(project-dir))) &body body)
+  "Sends coverage report to the Coveralls.
+
+   If dry run specified or code started not inside one of supported CI service,
+   then just prints JSON prepared for sending.
+   "
   (with-gensyms (reports result)
     `(if (and (stringp (asdf::getenv "COVERALLS"))
               (string/= (asdf::getenv "COVERALLS") ""))

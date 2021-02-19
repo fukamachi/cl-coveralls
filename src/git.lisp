@@ -6,6 +6,7 @@
   (:import-from :alexandria
                 :ends-with-subseq)
   (:export :git-branch
+           :git-sha
            :author-name
            :author-email
            :committer-name
@@ -27,7 +28,11 @@
 
 (defun git-branch ()
   (or (uiop:getenv "GIT_BRANCH")
+      (uiop:getenv "GITHUB_REF")
       (git '("rev-parse" "--abbrev-ref" "HEAD"))))
+
+(defun git-sha ()
+  (git '("rev-parse" "HEAD")))
 
 (defun author-name ()
   (git '("log" "-1" "--pretty=%aN")))
