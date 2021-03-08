@@ -68,10 +68,16 @@
                :manual)
       (setf dry-run t))
     
-    (when (and (string= repo-token "")
+    (when (and (eql service :github)
+               (string= repo-token "")
                (not dry-run))
       ;; https://docs.coveralls.io/api-reference says "repo_token" is required
-      (error "Please, set COVERALLS_REPO_TOKEN env variable. It is required."))
+      ;; and it really is but seems only on GitHub Action.
+      ;; See this issue from Anton Vodonosov:
+      ;; https://github.com/fukamachi/cl-coveralls/issues/14
+      (error "Please, set COVERALLS_REPO_TOKEN env variable.~@
+              It is required when running in GitHub actions and should have the value of Github Auth Token.~@
+              Read more here: https://github.com/lemurheavy/coveralls-public/issues/1508"))
     
     (let* ((json-data
              (append
