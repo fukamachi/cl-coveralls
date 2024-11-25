@@ -54,7 +54,9 @@
     (:github (when-let* ((event-name (uiop:getenv "GITHUB_EVENT_NAME"))
                          (event-file (uiop:getenv "GITHUB_EVENT_PATH"))
                          (file-content (uiop:read-file-string event-file))
-                         (event (yason:parse file-content :object-as :alist)))
+                         (event (let ((json:*json-identifier-name-to-lisp* #'identity)
+                                      (json:*identifier-name-to-key* #'identity))
+                                  (json:decode-json-from-string file-content))))
                ;; This processing taken from official Coveralls GH Action:
                ;; https://github.com/coverallsapp/github-action/blob/8cbef1dea373ebce56de0a14c68d6267baa10b44/src/run.ts#L38-L40
                (cdr (assoc "number" event :test 'equal))))

@@ -19,7 +19,7 @@
   :depends-on (#+sbcl :sb-cover
                :ironclad
                :lquery
-               :yason
+               :cl-json
                :dexador
                :uiop
                :cl-ppcre

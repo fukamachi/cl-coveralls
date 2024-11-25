@@ -101,13 +101,13 @@
                                         (cons "message" (commit-message))))
                             (cons "branch" (git-branch))))
                (cons "source_files" (coerce reports 'simple-vector)))))
-           (json (yason:with-output-to-string* () (yason:encode-alist json-data)))
+           (json (cl-json:encode-json-to-string json-data))
            (secure-json (progn
                           ;; Mask the secret repo token
                           (when repo-token
                             (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
                                     (mask-secret repo-token)))
-                          (yason:with-output-to-string* () (yason:encode-alist json-data)))))
+                          (cl-json:encode-json-to-string json-data))))
 
       (cond
         (dry-run
