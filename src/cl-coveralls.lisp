@@ -101,13 +101,13 @@
                                         (cons "message" (commit-message))))
                             (cons "branch" (git-branch))))
                (cons "source_files" (coerce reports 'simple-vector)))))
-           (json (jojo:to-json json-data :from :alist))
+           (json (yason:with-output-to-string* () (yason:encode-alist json-data)))
            (secure-json (progn
                           ;; Mask the secret repo token
                           (when repo-token
                             (rplacd (assoc "repo_token" (cdr json-data) :test #'string=)
                                     (mask-secret repo-token)))
-                          (jojo:to-json json-data :from :alist))))
+                          (yason:with-output-to-string* () (yason:encode-alist json-data)))))
 
       (cond
         (dry-run

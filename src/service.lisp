@@ -54,8 +54,8 @@
     (:github (when-let* ((event-name (uiop:getenv "GITHUB_EVENT_NAME"))
                          (event-file (uiop:getenv "GITHUB_EVENT_PATH"))
                          (file-content (uiop:read-file-string event-file))
-                         (event (jonathan:parse file-content)))
+                         (event (yason:parse file-content :object-as :alist)))
                ;; This processing taken from official Coveralls GH Action:
                ;; https://github.com/coverallsapp/github-action/blob/8cbef1dea373ebce56de0a14c68d6267baa10b44/src/run.ts#L38-L40
-               (getf event :|number|)))
+               (cdr (assoc "number" event :test 'equal))))
     (:manual nil)))
